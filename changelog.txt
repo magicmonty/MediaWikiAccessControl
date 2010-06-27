@@ -1,3 +1,7 @@
+verion 0.6
+*Bugfix release, touching the article didn't work, so I use a header redirect (bad hack, but works).
+*works now also for anonymous users
+
 version 0.5
 *Articles with the accesscontrol tag are now touched in advance to displaying it, so the page will not read from the cache
 *removed some development junk ;-)

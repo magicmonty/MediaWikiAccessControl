@@ -4,7 +4,7 @@
 	// contributed by Martin Mueller (http://blog.pagansoft.de)
 	// based on accesscontrol.php by Josh Greenberg
 	
-	// This is version 0.5
+	// This is version 0.6
 	// It's tested on MediaWiki 1.8.2
 	
 	// INSTALLATION:
@@ -41,7 +41,7 @@
 
 	// Add the hook function call to an array defined earlier in the wiki //code execution. 
 	$wgExtensionFunctions[] = "wfAccessControlExtension";
-		
+	
 	function debugme($input)
 	{
 		global $wgAccesscontrolDebug;
@@ -90,6 +90,8 @@
 		global $wgWikiVersion;
 		// an sysop may see all protected pages
 		global $wgAdminCanReadAll;
+		
+		global $wgArticlePath;
 
 		// some first initialisations	
 		if (trim($wgAccessControlGroupPrefix)=="") $wgAccessControlGroupPrefix="Usergroup";
@@ -164,7 +166,7 @@
 		// if user is NOT in Array of allowed Users...
 		if (!in_array(strtolower(trim($wgUser->getName())), $allowedAccess))
 		{
-			debugme("user ".$wgUser->getName()."not in group(s) ".implode($groupsToDisplay,"/").", testing for sysop rights");
+			debugme("user ".$wgUser->getName()." not in group(s) ".implode($groupsToDisplay,"/").", testing for sysop rights");
 			// if user in sysop-Group and admins may see restricted pages allow access nevertheless
 			if ((in_array("sysop", $wgUser->mGroups)) && ($wgAdminCanReadAll == true))
 			{
@@ -182,9 +184,20 @@
 			else
 			{
 				debugme("user ".$wgUser->getName()." is not sysop or wgAdminCanReadAll is not true, so access is not allowed");
-				// redirect to the no-access-page if current user doesn't match the
-				// accesscontrol list
-				$wgOut->redirect($wgAccessControlNoAccessPage);
+
+				// make direct redirect, if $wgOut isn't already set (bypassing the cache), bad hack
+				debugme('checking if $wgOut is a StubObject');
+				if ((is_object( $wgOut )) && (is_a( $wgOut, 'StubObject' )))
+				{
+					header("Location: ".$wgAccessControlNoAccessPage);
+					exit;
+				}
+				else
+				{
+					// redirect to the no-access-page if current user doesn't match the
+					// accesscontrol list
+					$wgOut->redirect($wgAccessControlNoAccessPage);
+				}
 				
 				return false;
 			}
@@ -236,14 +249,55 @@
 	
 	// Hook the conTolEditAccess function in the edit action
 	$wgHooks['AlternateEdit'][] = 'controlEditAccess';
-	$wgHooks['ArticleAfterFetchContent'][] = 'checkCache';
 
-	function checkCache(&$article, &$content)
+	//Hook the userCan function for bypassing the cache (bad bad hackaround)
+	$wgHooks['userCan'][] = 'hookUserCan';
+	function anonymousUser($wgUser)
 	{
-		if (substr_count($article->mContent, "<accesscontrol>") > 0)
+		return $wgUser->isIP($wgUser->getName());
+	}
+
+	function hookUserCan( &$title, &$wgUser, $action, &$result )
+	{
+		global $wgAccessControlNoAccessPage;
+		global $wgOut;
+			
+		$allowAccess = true;
+		
+		if ($action=='read')
 		{
-			debugme("accesscontrol tag found, touching article now");
-			$article->mTouched=date("YmdHis");
+			$article = new Article( $title, 0 );
+			// $article->loadPageData( "fromdb" );
+			$content = $article->getContent();
+			debugme("-- Begin content --");
+			debugme($content);
+			debugme("-- End content --");
+
+			$starttag = "<accesscontrol>";
+			$endtag = "</accesscontrol>";
+
+			// get start position of the content of the tag
+			$start = strpos( $content, $starttag );
+			if ($start === false)
+				$start = -1;
+			else
+				$start += strlen($starttag);
+
+			// get end position of the content of the tag
+			$end = strpos( $content, $endtag );
+			if ($end === false)
+				$end = -1;
+			
+			// if accesscontrol tag is found, check if the user is allowed to see the content
+			if (($start >= 0) && ($end > 0) && ($end > $start))
+			{
+				debugme("accesscontrol tag found");
+				{
+					$allowedGroups = substr($content, $start, $end-strlen($endtag)+1 );
+					debugme($allowedGroups);
+					controlUserAccess( $allowedGroups, false );
+				}
+			}
 		}
 	}
 
@@ -252,7 +306,7 @@
 	function controlEditAccess(&$editpage) 
 	{
 		global $wgAccessControlNoAccessPage;
-		
+
 		$starttag = "<accesscontrol>";
 		$endtag = "</accesscontrol>";
 		
@@ -262,15 +316,21 @@
 		$content = $editPage->getContent();
 
 		// get start position of the content of the tag
-		$start = strpos( $content, $starttag ) + strlen($starttag);
-		// get end position of the content of the tag
-		$end = strpos( $content, $endtag ) - $start;
+		$start = strpos( $content, $starttag );
+		if ($start === false)
+			$start = -1;
+		else
+			$start += strlen($starttag);
+			// get end position of the content of the tag
+		$end = strpos( $content, $endtag );
+		if ($end === false)
+			$end = -1;
 		
 		
 		// if accesscontrol tag is found, check if the user is allowed to see the content
-		if (($start >= 0) && ($end > 0) && ($end < $start))
+		if (($start >= 0) && ($end > 0) && ($end > $start))
 		{
-			$allowedGroups = substr($content, $start, $end );
+			$allowedGroups = substr($content, $start, $end-strlen($endtag)+1 );
 			return controlUserAccess( $allowedGroups, false );
 		}
 		

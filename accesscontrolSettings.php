@@ -20,6 +20,6 @@
 	//$wgAccessControlGroupPrefix = "Usergroup"; 						// The prefix for the Usergroup pages
 	//$wgAccessControlNoAccessPage = "/index.php/No_Access";	 			// To this page will these users redirected who ar not allowed to see the page.
 	// $wgGroupLineText = "This page is only accessible for group %s !!!";			// The text for the showing on the restricted pages, for one group
-	// $wgGroupLineText = "This page is only accessible for the groups %s !!!";		// The text for the showing on the restricted pages, for more than one group
+	// $wgGroupsLineText = "This page is only accessible for the groups %s !!!";		// The text for the showing on the restricted pages, for more than one group
 	
 ?>

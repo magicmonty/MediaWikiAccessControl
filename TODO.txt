@@ -1,0 +1,7 @@
+There are some thing to to for the next version::
+
+    * Restrict search/RSS results for protected pages (without pathich if possible)
+    * the use of multiple accesscontrol-tags for use in templates
+    * the additional use of single users
+    * the accesscontrol-tag has to be on the first line of the wikitext to work correctly, that has to be fixed
+

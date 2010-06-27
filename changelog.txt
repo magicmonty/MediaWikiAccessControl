@@ -1,4 +1,11 @@
-verion 0.6
+version 0.7
+*now it's possible to have read-only groups.
+*set the english language as default
+*refactored some functions for better readability
+*it's now possible to use the internal groups from MediaWiki
+*Added a TODO-Document
+
+version 0.6
 *Bugfix release, touching the article didn't work, so I use a header redirect (bad hack, but works).
 *works now also for anonymous users
 

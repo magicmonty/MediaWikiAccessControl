@@ -4,8 +4,8 @@
 	// contributed by Martin Mueller (http://blog.pagansoft.de)
 	// based on accesscontrol.php by Josh Greenberg
 
-	// This is version 0.7
-	// It's tested on MediaWiki 1.8.2
+	// This is version 0.8
+	// It's tested on MediaWiki 1.10.0
 
 	// INSTALLATION:
 	//
@@ -319,6 +319,7 @@
 	{
 		global $wgUser;
 		global $wgAdminCanReadAll;
+                global $wgAccessControlAnonymousGroupName;
 
 		// get allowed Groups from Tag
 		$groupAccess = explode(",,", $input);
@@ -330,7 +331,13 @@
 
 		$groupsToDisplay = getGroupsToDisplay($groupAccess);
 
-		if(in_array("sysop", $wgUser->mGroups) && $wgAdminCanReadAll)
+                $wgUsermGroups = $wgUser->mGroups;
+		if (anonymousUser($wgUser))
+		{
+			$wgUsermGroups[] = $wgAccessControlAnonymousGroupName;
+		}	
+
+		if(in_array("sysop", $wgUsermGroups) && $wgAdminCanReadAll)
 		{
 			debugme("controlMediaWikiUserAccess_2: user in sysop group, so access is granted");
 
@@ -355,7 +362,7 @@
 			}
 			else
 			{
-				if(in_array($groupTitle, $wgUser->mGroups))
+				if(in_array($groupTitle, $wgUsermGroups))
 				{
 					debugme("controlMediaWikiUserAccess_5: user in group '".$groupTitle."', so access is granted");
 					if ($showGroupText)
@@ -374,6 +381,45 @@
 		doRedirect();
 		return false;
 	}
+	
+	// Parses a Wiki-Link and generates a HTML-Link (this is quite a bad hack)
+        function parseLink($link)
+	{
+		// Check if Link is marked "Read Only"
+		if (strpos( $link, "(ro)"))
+		{
+			// if Link is marked "Read Only" remove the mark from the Link-Text and store the information
+			$tlink = str_replace( "(ro)", "", $link );
+			$ro = true;
+		}
+		else
+		{
+			$ro = false;
+			$tlink = $link;
+		}
+		
+		// extract LinkName and Title from the text
+                if (strpos( $tlink, "|" ))
+                {
+                        $linkTitle = substr( $tlink, 2, strpos( $tlink, "|" ) - 2 );
+                        if ($ro)
+                                $linkName  = substr( $tlink, strpos( $tlink, "|" ) + 1, strlen( $tlink ) - strpos( $tlink, "|" ) - 3 )." (ro)";
+                        else
+                                $linkName  = substr( $tlink, strpos( $tlink, "|" ) + 1, strlen( $tlink ) - strpos( $tlink, "|" ) - 3 );
+                }
+                else
+                {
+                        $linkTitle = substr( $tlink, 2, strpos( $tlink, "]" ) - 2 );
+                        if ($ro)
+                                $linkName = $linkTitle." (ro)";
+                        else
+                                $linkName = $linkTitle;
+                }
+		
+		// return the HTML link
+                return "<a href=\"/index.php/$linkTitle\" title=\"$linkTitle\">$linkName</a>";
+        }
+
 
 	// shows the text, which says for which group(s) the page is restricted
 	function displayGroups($allowedGroups)
@@ -386,7 +432,16 @@
 		if (is_array($allowedGroups))
 		{
 			debugme("displayGroups_1: allowedGroups is an array");
-			$displayGroups = str_replace("(ro)"," (ro)",implode($allowedGroups, " / "));
+			
+                        $groups = Array();
+			
+                        foreach ($allowedGroups as $ag)
+                        {
+                                $groups[] = parseLink($ag);
+                        }
+			
+			$displayGroups = implode($groups, " / ");
+
 			$groupCount = count($allowedGroups);
 		}
 		else
@@ -397,20 +452,20 @@
 				$groupCount = 1;
 
 			debugme("displayGroups_2: allowedGroups is not an array");
-			$displayGroups = str_replace("(ro)","",$allowedGroups);
+                        $displayGroups = parseLink($allowedGroups);
 		}
 
 		if (($groupCount>0) && (!$wgAccessControlDisableMessages))
 		{
 			debugme("displayGroups_3: print message");
 			// output the little Message, if $wgAccessControlDisableMessages is not set
-			$style = "<font style=\"font-size:8pt\">";
-			$style_end = "</font>";
+			$style = "<div id=\"accesscontrol\" style=\"color:#BA0000;font-size:8pt\">";
+			$style_end = "</div>";
 
 			if ( $groupCount == 1 )
-				return( $wgOut->parse($style.sprintf($wgGroupLineText, $displayGroups).$style_end) );
+				return( $style.sprintf($wgGroupLineText, $displayGroups).$style_end ); 
 			else
-				return( $wgOut->parse($style.sprintf($wgGroupsLineText, $displayGroups).$style_end) );
+				return( $style.sprintf($wgGroupsLineText, $displayGroups).$style_end );
 		}
 		else
 		{
@@ -472,6 +527,8 @@
 				}
 			}
 		}
+
+		return $allowAccess;
 	}
 
 	// Hook function for the edit action
@@ -539,13 +596,15 @@
 			if (!in_array("sysop", $wgUser->mGroups))
 			{
 				// redirect to the no-access-page if current user isn't a sysop
-				$wgOut->redirect($wgAccessControlNoAccessPage);
-
+				doRedirect();
+				
 				return false;
 			}
 		}
 		else
 			return true;
+
+		return true;
 	}
 
 ?>

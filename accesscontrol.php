@@ -4,7 +4,7 @@
 	// contributed by Martin Mueller (http://blog.pagansoft.de)
 	// based on accesscontrol.php by Josh Greenberg
 	
-	// This is version 0.2
+	// This is version 0.3
 	// It's tested on MediaWiki 1.6.8 and 1.7.1
 	
 	// INSTALLATION:
@@ -34,9 +34,12 @@
 	// That's it for the installation. To restrict access on a page-by-page basis to specific usergroups, just include the names of the allowed usergroups within an tag (separated by double commas) in the body of that page. Thus, if you wanted to restrict access to the people with usergroups "Administrators", "IT-Department" and "Sales", you would use the following syntax:
 	// <accesscontrol>Administrators,,IT-Department,,Sales</accesscontrol>
 	
-	//Add the hook function call to an array defined earlier in the wiki //code execution. 
+	// Add the hook function call to an array defined earlier in the wiki //code execution. 
 	$wgExtensionFunctions[] = "wfAccessControl";
-	
+	// Hook the conTolEditAccess function in the edit action
+	$wgHooks['AlternateEdit'][] = 'controlEditAccess';
+	// Hook the controlUserGroupPageAccess in the Article to allow access to the "Usergroup:..." pages only to the sysop
+	$wgHooks['ArticleAfterFetchContent'][] = 'controlUserGroupPageAccess';
 	
 	//This is the hook function. It adds the tag to the wiki parser and 
 	//tells it what callback function to use. 
@@ -44,11 +47,47 @@
 	{
 		global $wgParser;
 		# register the extension with the WikiText parser
-		$wgParser->setHook( "accesscontrol", "controlUserAccess" );
+		$wgParser->setHook( "accesscontrol", "doControlUserAccess" );
+	}
+	
+	// This function is for controlling the access (view and edit) to the "Usergroup:..." pages
+	function controlUserGroupPageAccess( $out )
+	{
+		// Grab currently logged in user
+		global $wgUser;
+		
+		// Grab the current title
+		global $wgTitle;
+		
+		// current Output (for redirection)
+		global $wgOut;
+		
+		// get configuration variables
+		global $wgAccessControlNoAccessPage;
+		global $wgAccessControlGroupPrefix;
+		
+		// if this is a Usergroup-Page allow access only to the sysop
+		if (substr($wgTitle->getText(),0,strlen($wgAccessControlGroupPrefix)) == $wgAccessControlGroupPrefix)
+		{
+			if (!in_array("sysop", $wgUser->mGroups))
+			{
+				// redirect to the no-access-page if current user isn't a sysop
+				$wgOut->redirect($wgAccessControlNoAccessPage);
+				
+				return false;
+			}
+		}
+		else
+			return true;
+	}
+	
+	function doControlUserAccess( $input )
+	{
+		return  controlUserAccess( $input, true );
 	}
 	
 	// The callback function for user access 
-	function controlUserAccess( $input )
+	function controlUserAccess( $input, $showGroupText )
 	{
 		// Grab currently logged in user
 		global $wgUser;
@@ -78,11 +117,11 @@
 		
 		// get allowed Groups from Tag
 		$groupAccess = explode(",,", $input);
+		
 		foreach ($groupAccess as $groupEntry)
 		{
 			// get full Pagetitle for the group
 			$groupTitle = $wgAccessControlGroupPrefix.":".trim($groupEntry); 
-			
 			// make the textual group list for the message on the top
 			if ($first)
 			{
@@ -116,7 +155,6 @@
 				$allowedUsers=$groupPage->getPreloadedText($groupTitle);
 			}
 			$groupPage = NULL;
-			
 
 			// Create array of users with permission to access this page
 			$usersAccess = explode("*", $allowedUsers);
@@ -136,17 +174,32 @@
 			{
 				// redirect to the no-access-page if current user doesn't match the
 				// accesscontrol list
-				// return( $wgOut->parse("allowedAccess: ".implode($allowedAccess,":")) );
 				$wgOut->redirect($wgAccessControlNoAccessPage);
+				
+				return false;
 			}
 			else
 			{
-				return( displayGroups($groupCount, $allowedGroups) );
+				if ($showGroupText)
+				{
+					return( displayGroups($groupCount, $allowedGroups) );
+				}
+				else
+				{
+					return true;
+				}
 			}
 		}
 		else
 		{
-			return( displayGroups($groupCount, $allowedGroups) );
+			if ($showGroupText)
+			{
+				return( displayGroups($groupCount, $allowedGroups) );
+			}
+			else
+			{
+				return true;
+			}
 		}
 	}
 	
@@ -170,5 +223,37 @@
 		{
 			return("");
 		}
+	}
+	
+	// Hook function for the edit action
+	// $editpage: the editpage (object) being called
+	function controlEditAccess(&$editpage) 
+	{
+		global $wgAccessControlNoAccessPage;
+		global $wgOut;
+		
+		$starttag = "<accesscontrol>";
+		$endtag = "</accesscontrol>";
+		
+		// search accesscontrol tag
+		$title = $editpage->mTitle;
+		$editPage = new Article( $title, 0 );
+		$content = $editPage->getContent();
+
+		// get start position of the content of the tag
+		$start = strpos( $content, $starttag ) + strlen($starttag);
+		// get end position of the content of the tag
+		$end = strpos( $content, $endtag ) - $start;
+		
+		
+		// if accesscontrol tag is found, check if the user is allowed to see the content
+		if (($start >= 0) && ($end > 0) && ($end < $start))
+		{
+			$allowedGroups = substr($content, $start, $end );
+			return controlUserAccess( $allowedGroups, false );
+		}
+		
+		// if nothing happens here, go on normally
+		return true;
 	}
 ?>

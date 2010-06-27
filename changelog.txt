@@ -1,3 +1,8 @@
+version 0.3
+*access is now also controlled for editing the pages (if you access it manually per action=edit in the URL)
+*only sysops can now view and edit the "Usergroup:.." pages
+*added a changelog ;-)
+
 version 0.2
 *some fixes, to make it work under Version 1.7.1
 *Sysops can now always access pages, so if you make an error, you have always the opportunity to correct it ;-)

@@ -4,8 +4,8 @@
 	// contributed by Martin Mueller (http://blog.pagansoft.de)
 	// based on accesscontrol.php by Josh Greenberg
 	
-	// This is version 0.3
-	// It's tested on MediaWiki 1.6.8 and 1.7.1
+	// This is version 0.4
+	// It's tested on MediaWiki 1.7.1
 	
 	// INSTALLATION:
 	//
@@ -21,6 +21,9 @@
 	// $wgAccessControlGroupPrefix = "Usergroup"; // The Prefix for the Usergroup-Pages
 	// $wgAccessControlNoAccessPage = "/index.php/No_Access"; // To this Page will these users redirected who ar not allowed to see the page.
 	// $wgWikiVersion = 1.6 // Set this to 1.7, if you use mediaWiki 1.7 or greater, this is for compatibility reasons
+	// $wgAdminCanReadAll = true; // sysop users can read all restricted pages
+	// $wgGroupLineText = "This page is only accessible for group %s !!!"; // The text for the showing on the restricted pages, for one group
+	// $wgGroupsLineText = "This page is only accessible for group %s !!!"; // The text for the showing on the restricted pages, for more than one group
 	//
 	// Step 3:
 	// Create a Wiki-Page with the Name Usergroup:Groupname and add the Users in the Group in a Bulletlist
@@ -101,7 +104,9 @@
 		global $wgAccessControlNoAccessPage;
 		// the page where we redirect if access was denied
 		global $wgWikiVersion;
-		
+		// an sysop may see all protected pages
+		global $wgAdminCanReadAll;
+
 		// some first initialisations	
 		if (trim($wgAccessControlGroupPrefix)=="") $wgAccessControlGroupPrefix="Usergroup";
 		if (trim($wgAccessControlNoAccessPage)=="") $wgAccessControlNoAccessPage="/index.php/No_Access";
@@ -118,6 +123,8 @@
 		// get allowed Groups from Tag
 		$groupAccess = explode(",,", $input);
 		
+		$groupsToDisplay = Array();
+		
 		foreach ($groupAccess as $groupEntry)
 		{
 			// get full Pagetitle for the group
@@ -132,7 +139,8 @@
 				$allowedGroups .= ", [[".$groupTitle."|".trim($groupEntry)."]]";
 			}
 			
-			
+			$groupsToDisplay[] = $allowedGroups;
+					
 			// get the allowed users from the group
 			
 			// this part is used, if the Version of MediaWiki is greater or equal than 1.7
@@ -170,7 +178,18 @@
 		
 		if (!in_array(strtolower(trim($wgUser->getName())), $allowedAccess))
 		{
-			if (!in_array("sysop", $wgUser->mGroups))
+			if ((in_array("sysop", $wgUser->mGroups)) && ($wgAdminCanReadAll == true))
+			{
+				if ($showGroupText)
+				{
+					return( displayGroups($groupCount, $groupsToDisplay) );
+				}
+				else
+				{
+					return true;
+				}
+			}
+			else
 			{
 				// redirect to the no-access-page if current user doesn't match the
 				// accesscontrol list
@@ -178,23 +197,12 @@
 				
 				return false;
 			}
-			else
-			{
-				if ($showGroupText)
-				{
-					return( displayGroups($groupCount, $allowedGroups) );
-				}
-				else
-				{
-					return true;
-				}
-			}
 		}
 		else
 		{
 			if ($showGroupText)
 			{
-				return( displayGroups($groupCount, $allowedGroups) );
+				return( displayGroups($groupCount, $groupsToDisplay) );
 			}
 			else
 			{
@@ -207,7 +215,14 @@
 	{
 		global $wgAccessControlDisableMessages;
 		global $wgOut;
+		global $wgGroupLineText;
+		global $wgGroupsLineText;
 		
+		if (is_array($allowedGroups))
+			$displayGroups = implode($allowedGroups, " / ");
+		else
+			$displayGroups = $allowedGroups;
+
 		if (($groupCount>0) && (!$wgAccessControlDisableMessages))
 		{
 			// output the little Message, if $wgAccessControlDisableMessages is not set
@@ -215,9 +230,9 @@
 			$style_end = "</font>";
 			
 			if ( $groupCount == 1 )
-				return( $wgOut->parse($style."Diese Seite ist nur f&uuml;r die Gruppe ".$allowedGroups." zug&auml;nglich!!!".$style_end) );
+				return( $wgOut->parse($style.sprintf($wgGroupLineText, $displayGroups).$style_end) );
 			else
-				return( $wgOut->parse($style."Diese Seite ist nur f&uuml;r die Gruppen ".$allowedGroups." zug&auml;nglich!!!".$style_end) );
+				return( $wgOut->parse($style.sprintf($wgGroupsLineText, $displayGroups).$style_end) );
 		}
 		else
 		{

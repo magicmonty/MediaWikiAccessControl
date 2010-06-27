@@ -1,0 +1,17 @@
+Tipp 1:
+In my own wiki all users must login in advance to see any content than the Main Page.
+I've done this with the following entrys in the LocalSettings.php:
+
+# user rights
+# only logged in users may edit and read
+$wgGroupPermissions['*']['edit'] = false;
+$wgGroupPermissions['*']['read'] = false;
+# rights to read (if not logged in) just to the mainpage and some special pages (Attention: German Version ;-) )
+$wgWhitelistRead = array( "Wiki:Portal", "Hauptseite", "Spezial:Userlogin", "-", "MediaWiki:Monobook.css" );
+# no diskussion pages for anonyous users
+$wgDisableAnonTalk = true;
+
+Tipp 2:
+All users (except the adminis) shouldn't be member of a mediawiki group (See Specialpage Userrights).
+All users in the "sysop" group can see and edit all restricted pages. If you don't want this behaviour, you
+can turn it off by setting the option $wgAdminCanReadAll to false in the accesscontrolSettings.php

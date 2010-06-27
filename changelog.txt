@@ -1,3 +1,10 @@
+version 0.4
+*tested in Version 1.8.2
+*added some Tips
+*if more then one group is in the <accesscontrol> tag, all groups are now displayed
+*there is now an option, where you can turn off the behaviour, that users in the sysop group can see restricted pages
+*the "access is allowed only for group..." text is now in the accesscontrolSettings.php for easier localisation
+
 version 0.3
 *access is now also controlled for editing the pages (if you access it manually per action=edit in the URL)
 *only sysops can now view and edit the "Usergroup:.." pages

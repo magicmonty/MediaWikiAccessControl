@@ -1,2 +1,6 @@
+version 0.2
+*some fixes, to make it work under Version 1.7.1
+*Sysops can now always access pages, so if you make an error, you have always the opportunity to correct it ;-)
+
 version 0.1
 first Version

@@ -28,13 +28,17 @@ Documentation
 Installation
 ------------
 
-### Step 1:
+Step 1:
+'''''''
+
 * add the following lines to the bottom of your LocalSettings.php:
   ::	
   	require_once("extensions/accesscontrolSettings.php");
   	include("extensions/accesscontrol.php");
 	
-### Step 2:
+Step 2:
+'''''''
+
 * check (and maybe edit) the settings in accesscontrolSettings.php:
   ::	
   	$wgAccessControlDisableMessages = false; // if false, show a Line on Top of each secured Page, which says, which Groups are allowed to see this page.
@@ -47,8 +51,9 @@ Installation
   	$wgGroupsLineText = "This page is only accessible for group %s !!!"; // The text for the showing on the restricted pages, for more than one group
   	$wgAccesscontrolDebug = false;	// Debug log on
   	$wgAccesscontrolDebugFile = "/var/www/wiki/config/debug.txt"; // Path to the debug log
-i
-### Step 3:
+
+Step 3:
+'''''''
 * Create a Wiki-Page with the Name Usergroup:Groupname and add the Users in the Group in a Bulletlist
 * Example: You want the Group "IT-Department" with the Users "John Doe" and "Jane Doe" in it:
 *
@@ -60,7 +65,8 @@ i
 There is a second possibility for using groups. You can set the variable $wgUseMediaWikiGroups to true and use the internal groups from MediaWiki. Then you can use the special page "Special:Userrights"
 for Useradministration and you don't have to create the Usergroup pages.
 
-### Step 4:
+Step 4:
+'''''''
 * Create a No-Access Page with the Name No_Access and Write some Text in it (i.e. "Access to this page is denied for you!")
 * If you want to protect the page, so the users of a group can read but not edit, you have to append "(ro)" to the group name.
 * Example:
